@@ -71,8 +71,8 @@ export class KingSlime extends Phaser.Physics.Arcade.Sprite {
     Audio.sfx('bossLand');
     this.scene.cameras.main.shake(180, 0.012);
     this.scene.dust(this.x, this.y, 12);
-    this.scene.spawnWave(this.x - 12, -1);
-    this.scene.spawnWave(this.x + 12, 1);
+    this.scene.spawnWave(this.x - 12, -1, this.y);
+    this.scene.spawnWave(this.x + 12, 1, this.y);
     if (this.landings % 2 === 0) this.scene.time.delayedCall(250, () => this.summon());
   }
 

@@ -2,6 +2,7 @@
 // Palette chars are mapped per sprite. '.' = transparent. Outline is added automatically.
 
 export const INK = '#1a1420';
+export const GEMS = ['#ff3b5c', '#ffd84a', '#5fe0ff', '#b6ff4a', '#ff4ef0', '#ff8a2a'];
 
 export function hexToRgb(h) {
   h = h.replace('#', '');
@@ -58,65 +59,48 @@ export function gridCanvas(rows, pal, opts = {}) {
   return c;
 }
 
-// ------------------------------------------------------------------ knight
-// Grid column 4 is the body centre -> placed at canvas x=15 so flipX keeps the body in place.
+// ------------------------------------------------------------------ knight (10 px tall)
+// Grid column 3 is the body centre -> canvas x=12, so flipX keeps the body in place.
 const HEAD = [
-  '..pp..............',
-  '.ppp..............',
-  '..Lsss............',
-  '.Lsssss...........',
-  '.Lssvvv...........',
-  '.Lssvwv...........',
-  '.Lsssss...........',
-  '..dssd............',
+  '..pp',
+  '.Lsss',
+  '.Lsvw',
+  '..dd',
 ];
-const ARMS_IDLE = [
-  '.dLsssaa..........',
-  'cdLsssoa..........',
-  'cdLsssoah.......bb',
-  'cgBBBBoghbbbbbbbe.',
-  'c.Lssd..heee......',
+const ARMS = [
+  'caLsa.h...b.',
+  'caLsagbbbb..',
+  'c.BB..hee...',
 ];
 const LEGS = {
-  stand: ['..Ls.sd', '..Ls.sd', '..Ls.sd', '..gg.gg'],
-  run1: ['..Ls.sd', '.Ls..sd', '.gg..sd', '......gg'],
-  run2: ['..Lssd.', '..Lsd..', '..Lsd..', '..ggg..'],
-  run3: ['..Ls.sd', '.Ls..sd', '.Ls..gg', '.gg....'],
-  jump: ['..Ls.sd', '..gg.gg', '.......', '.......'],
-  fall: ['..Ls.sd', '.Ls...sd', '.gg...gg', '........'],
+  stand: ['..L.s', '..L.s', '..g.g'],
+  run1: ['..L.s.', '.L...s', '.g...g'],
+  run2: ['..Ls..', '..Ls..', '..gg..'],
+  run3: ['..Ls..', '.L..s.', 'g...g.'],
+  jump: ['..L.s', '..g.g', '.....'],
+  fall: ['.L..s.', '.g...g', '......'],
 };
-// curved sabre raised (wind-up)
 const WINDUP = [
-  '..pp...........b..',
-  '.ppp.........bbe..',
-  '..Lsss......bee...',
-  '.Lsssss....be.....',
-  '.Lssvvv...be......',
-  '.Lssvwv..h........',
-  '.Lsssss.g.........',
-  '..dssdaa..........',
-  '.dLsssa...........',
-  'cdLsss............',
-  'cdLsss............',
-  'cgBBBB............',
-  'c.Lssd............',
+  '..pp.....b',
+  '.Lsss...be',
+  '.Lsvw..be.',
+  '..dd..h...',
+  'caLsag....',
+  'caLs......',
+  'c.BB......',
 ];
-// arm thrust forward, sabre sweeping with curved tip
 const STRIKE_ARMS = [
-  '.dLsssaa..h.......bb',
-  'cdLsssaaaghbbbbbbbe.',
-  'cdLsss....heeee.....',
-  'cgBBBB..............',
-  'c.Lssd..............',
+  'caLs....h....b',
+  'caLsaaaghbbbbe',
+  'c.BB....hee...',
 ];
 
 export const KNIGHT_PAL = {
-  p: '#e2463f', L: '#f2f5f8', s: '#c3ccd8', d: '#7d8899', v: '#232032', w: '#ffffff',
-  c: '#3d6fd6', h: '#f2c14e', b: '#f4f8fc', e: '#9fb0c4', B: '#7a4a2a', g: '#55607a',
-  a: '#aab4c4', o: '#3a3446',
+  p: '#ff3b30', L: '#ffffff', s: '#c3ccd8', d: '#7d8899', v: '#232032', w: '#7ff6ff',
+  c: '#3d6fd6', h: '#ffd84a', b: '#ffffff', e: '#9fd4ff', B: '#8a5a2a', g: '#55607a', a: '#aab4c4',
 };
 
-export const KNIGHT_FRAME = { w: 32, h: 19, ox: 11, oy: 1 }; // grid col 4 -> x 15
+export const KNIGHT_FRAME = { w: 24, h: 12, ox: 9, oy: 1 }; // grid col 3 -> x 12
 
 function knightFrame(rows) {
   return gridCanvas(rows, KNIGHT_PAL, { w: KNIGHT_FRAME.w, h: KNIGHT_FRAME.h, ox: KNIGHT_FRAME.ox, oy: KNIGHT_FRAME.oy });
@@ -124,13 +108,8 @@ function knightFrame(rows) {
 
 export function knightFrames() {
   const f = {};
-  const body = (legs, arms = ARMS_IDLE) => knightFrame([...HEAD, ...arms, ...LEGS[legs]]);
-  f.idle = body('stand');
-  f.run1 = body('run1');
-  f.run2 = body('run2');
-  f.run3 = body('run3');
-  f.jump = body('jump');
-  f.fall = body('fall');
+  const body = (legs, arms = ARMS) => knightFrame([...HEAD, ...arms, ...LEGS[legs]]);
+  for (const k of Object.keys(LEGS)) f[k === 'stand' ? 'idle' : k] = body(k);
   f.windup = knightFrame([...WINDUP, ...LEGS.stand]);
   f.strike = knightFrame([...HEAD, ...STRIKE_ARMS, ...LEGS.stand]);
   return f;
@@ -142,6 +121,7 @@ export const SLIME_COLORS = {
   green: { x: '#8dff1c', L: '#efffb8', D: '#3fd400', ol: '#1f5a00', glow: 0x9dff2a },
   pink: { x: '#ff2ee6', L: '#ffd0fb', D: '#d000b8', ol: '#5a0050', glow: 0xff4ef0 },
   purple: { x: '#a43dff', L: '#ead2ff', D: '#7000ea', ol: '#33006e', glow: 0xb45cff },
+  fire: { x: '#ff6a00', L: '#fff08a', D: '#e02800', ol: '#5a1000', glow: 0xff7a1a },
 };
 const SLIME_ALPHA = { x: 165, D: 205, L: 235, e: 255, m: 255 };
 const SLIME = {
@@ -362,16 +342,16 @@ export function pixelCanvas(col = '#ffffff', s = 1) {
 }
 
 export function slashCanvas() {
-  // crescent swoosh, 20x16
-  const c = makeCanvas(20, 16);
+  // crescent swoosh, 16x12
+  const c = makeCanvas(16, 12);
   const x = c.getContext('2d');
-  for (let a = -70; a <= 60; a += 2) {
+  for (let a = -70; a <= 60; a += 3) {
     const r = (a + 70) / 130;
-    for (let t = 0; t < 3; t++) {
-      const rad = 13 - t * 1.5;
-      const px = Math.round(4 + Math.cos(a * Math.PI / 180) * rad);
-      const py = Math.round(8 + Math.sin(a * Math.PI / 180) * rad * 0.75);
-      x.fillStyle = t === 0 ? `rgba(255,255,255,${0.95 * (0.4 + r * 0.6)})` : `rgba(200,230,255,${0.5 * r})`;
+    for (let t = 0; t < 2; t++) {
+      const rad = 9 - t;
+      const px = Math.round(3 + Math.cos(a * Math.PI / 180) * rad);
+      const py = Math.round(6 + Math.sin(a * Math.PI / 180) * rad * 0.7);
+      x.fillStyle = t === 0 ? `rgba(255,255,255,${0.95 * (0.4 + r * 0.6)})` : `rgba(160,220,255,${0.6 * r})`;
       x.fillRect(px, py, 1, 1);
     }
   }
@@ -381,4 +361,97 @@ export function slashCanvas() {
 export function registerCanvas(scene, key, canvas) {
   if (scene.textures.exists(key)) scene.textures.remove(key);
   scene.textures.addCanvas(key, canvas);
+}
+
+// ------------------------------------------------------------------ level-2 / moving things
+export function fireballFrames() {
+  const pal = { o: '#ff5a00', y: '#ffd23a', w: '#fffbe0' };
+  const opt = { w: 9, h: 9, ox: 2, oy: 2, ol: '#5a1000' };
+  return {
+    f0: gridCanvas(['..o..', '.oyo.', 'oywyo', '.oyo.', '..o..'], pal, opt),
+    f1: gridCanvas(['.o.o.', 'oyyo.', 'oywyo', '.oyyo', '.o.o.'], pal, opt),
+  };
+}
+
+export function lanternCanvas(glass = '#ffcf5a', core = '#fff6d0') {
+  return gridCanvas(['..k..', '.kkk.', 'kyyyk', 'kywyk', 'kyyyk', '.kkk.'], { k: '#3a3446', y: glass, w: core });
+}
+
+export function waterCanvas() {
+  // 8x16 tileable falling-water strip (scrolls vertically in game)
+  const c = makeCanvas(8, 16);
+  const x = c.getContext('2d');
+  const cols = ['rgba(140,230,255,0.55)', 'rgba(90,190,255,0.45)', 'rgba(220,250,255,0.75)'];
+  for (let px = 0; px < 8; px++) for (let py = 0; py < 16; py++) {
+    const k = (px * 5 + py * 3 + (px % 3) * 7) % 11;
+    x.fillStyle = k < 2 ? cols[2] : k < 6 ? cols[0] : cols[1];
+    x.fillRect(px, py, 1, 1);
+  }
+  return c;
+}
+
+export function pennantCanvas(color) {
+  return gridCanvas(['xxxxx', 'xLxxx', '.xxx.', '.xx..', '..x..'], { x: color, L: '#ffffff' }, { ol: '#1a1420' });
+}
+
+export function bannerCanvas(color, trim = '#ffd84a') {
+  return gridCanvas([
+    'ttttttt', 'xxxxxxx', 'xxxyxxx', 'xxyyyxx', 'xxxyxxx', 'xxxxxxx', 'xxxxxxx', 'xxxxxxx', 'tx.x.xt', 'x.....x',
+  ], { t: trim, x: color, y: trim }, { ol: '#1a1420' });
+}
+
+export function hangCrystalCanvas(color) {
+  return gridCanvas(['..k..', '..k..', '.xLx.', 'xxLxx', 'xLxxx', '.xxx.', '.xx..', '..x..'], { k: '#3a3446', x: color, L: '#ffffff' }, { ol: '#1a1420' });
+}
+
+export function chainCanvas(len) {
+  const c = makeCanvas(1, len);
+  const x = c.getContext('2d');
+  for (let i = 0; i < len; i++) { x.fillStyle = i % 3 === 2 ? '#2a2433' : '#6a6478'; x.fillRect(0, i, 1, 1); }
+  return c;
+}
+
+export function batFrames() {
+  const pal = { k: '#2a1d2a', r: '#ff4a4a' };
+  return {
+    b0: gridCanvas(['k.....k', 'kk.k.kk', '.krkrk.', '..k.k..'], pal, { outline: false }),
+    b1: gridCanvas(['.......', '..krk..', 'kkkkkkk', 'k.k.k.k'], pal, { outline: false }),
+  };
+}
+
+export function moverCanvas() {
+  // 32x8 wooden raft with iron bands and moss
+  const W = 32, H = 8;
+  const c = makeCanvas(W, H);
+  const x = c.getContext('2d');
+  const P = (px, py, w, h, col) => { x.fillStyle = col; x.fillRect(px, py, w, h); };
+  P(0, 0, W, H, '#1a1420');
+  P(1, 1, W - 2, H - 2, '#8a5a32');
+  for (let i = 4; i < W - 2; i += 6) P(i, 1, 1, H - 2, '#6a4224');
+  P(1, 1, W - 2, 1, '#b6e05a');
+  P(1, 2, W - 2, 1, '#7fb83a');
+  P(3, 3, 2, 3, '#4a4650'); P(W - 5, 3, 2, 3, '#4a4650');
+  P(1, H - 2, W - 2, 1, '#5a3a1e');
+  return c;
+}
+
+export function rayCanvas(w = 40, h = 120) {
+  // soft diagonal light shaft for ADD blending
+  const c = makeCanvas(w + h / 2, h);
+  const x = c.getContext('2d');
+  for (let y = 0; y < h; y++) {
+    const off = (h - y) / 2;
+    const g = x.createLinearGradient(off, 0, off + w, 0);
+    const a = 0.22 * (1 - y / h);
+    g.addColorStop(0, 'rgba(255,200,120,0)');
+    g.addColorStop(0.5, `rgba(255,200,120,${a})`);
+    g.addColorStop(1, 'rgba(255,200,120,0)');
+    x.fillStyle = g;
+    x.fillRect(off, y, w, 1);
+  }
+  return c;
+}
+
+export function sparkCanvas() {
+  return gridCanvas(['.w.', 'www', '.w.'], { w: '#ffffff' }, { outline: false });
 }

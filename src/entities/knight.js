@@ -1,13 +1,13 @@
 import { Audio } from '../audio.js';
 import { State } from '../state.js';
 
-const RUN = 85;
+const RUN = 78;
 const ACCEL_GROUND = 900;
 const ACCEL_AIR = 650;
-const JUMP_V = 250;
+const JUMP_V = 268;
 const COYOTE = 0.09;
 const BUFFER = 0.12;
-const MAX_FALL = 320;
+const MAX_FALL = 300;
 
 /**
  * Attack base class. New mechanics (stomp, dash, magic) plug in by subclassing and
@@ -41,8 +41,8 @@ export class SwordAttack extends Attack {
 
   hitbox() {
     const k = this.knight, b = k.body;
-    const w = 20, h = 18;
-    const x = k.facing > 0 ? b.right - 2 : b.left - w + 2;
+    const w = 16, h = 13;
+    const x = k.facing > 0 ? b.right - 1 : b.left - w + 1;
     return new Phaser.Geom.Rectangle(x, b.top - 3, w, h);
   }
 
@@ -71,7 +71,7 @@ export class SwordAttack extends Attack {
 
   spawnSlash() {
     const k = this.knight;
-    const fx = this.scene.add.image(k.x + k.facing * 14, k.y - 9, 'slash').setDepth(k.depth + 1).setBlendMode(Phaser.BlendModes.ADD);
+    const fx = this.scene.add.image(k.x + k.facing * 10, k.y - 6, 'slash').setDepth(k.depth + 1).setBlendMode(Phaser.BlendModes.ADD);
     fx.setFlipX(k.facing < 0);
     this.scene.tweens.add({ targets: fx, alpha: 0, x: fx.x + k.facing * 4, duration: 160, onComplete: () => fx.destroy() });
   }
@@ -84,8 +84,12 @@ export class SwordAttack extends Attack {
       if (!eb) continue;
       if (Phaser.Geom.Intersects.RectangleToRectangle(box, new Phaser.Geom.Rectangle(eb.x, eb.y, eb.width, eb.height))) {
         this.hitThisSwing.add(e);
-        e.hit?.(this.knight.facing, 1);
+        e.hit?.(this.knight.facing, 1, { airborne: !this.knight.onGround, knight: this.knight });
       }
+    }
+    // the sabre also pops fireballs
+    for (const f of this.scene.fireballs?.getChildren() ?? []) {
+      if (f.active && Phaser.Geom.Intersects.RectangleToRectangle(box, f.getBounds())) f.pop?.();
     }
   }
 }
@@ -96,7 +100,7 @@ export class Knight extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.setOrigin(0.5, 1);
-    this.body.setSize(8, 15).setOffset(12, 4);
+    this.body.setSize(6, 9).setOffset(9, 3);
     this.body.setMaxVelocityY(MAX_FALL);
     this.setDepth(10);
     this.facing = 1;
@@ -197,7 +201,7 @@ export class Knight extends Phaser.Physics.Arcade.Sprite {
     else this.setAlpha(1);
   }
 
-  hurt(fromX, amount = 1) {
+  hurt(fromX, amount = 1, opts = {}) {
     if (this.invuln > 0 || this.dead) return;
     State.hearts = Math.max(0, State.hearts - amount);
     this.scene.events.emit('hearts');
@@ -206,9 +210,9 @@ export class Knight extends Phaser.Physics.Arcade.Sprite {
     this.scene.flash(this, 80);
     if (State.hearts <= 0) { this.scene.onDeath(); return; }
     this.invuln = 1.3;
-    this.stun = 0.22;
-    const dir = Math.sign(this.x - fromX) || -this.facing;
-    this.body.setVelocity(dir * 120, -150);
+    const dir = opts.dir ?? (Math.sign(this.x - fromX) || -this.facing);
+    this.body.setVelocity(dir * (opts.knock ?? 120), opts.vy ?? -150);
+    this.stun = opts.stun ?? 0.22;
     Object.values(this.attacks).forEach(a => a.cancel());
   }
 

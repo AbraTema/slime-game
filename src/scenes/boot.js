@@ -32,11 +32,27 @@ export class BootScene extends Phaser.Scene {
     reg('px', Art.pixelCanvas('#ffffff', 1));
     reg('px2', Art.pixelCanvas('#ffffff', 2));
     reg('slash', Art.slashCanvas());
+    Object.entries(Art.fireballFrames()).forEach(([k, c]) => reg(`fireball_${k}`, c));
+    Object.entries(Art.batFrames()).forEach(([k, c]) => reg(`bat_${k}`, c));
+    reg('lantern', Art.lanternCanvas());
+    reg('lantern_cyan', Art.lanternCanvas('#5fe0ff', '#e0fbff'));
+    reg('lantern_pink', Art.lanternCanvas('#ff4ef0', '#ffe0fb'));
+    reg('water', Art.waterCanvas());
+    Art.GEMS.forEach((col, i) => {
+      reg(`pennant_${i}`, Art.pennantCanvas(col));
+      reg(`banner_${i}`, Art.bannerCanvas(col));
+      reg(`hcrystal_${i}`, Art.hangCrystalCanvas(col));
+    });
+    reg('mover', Art.moverCanvas());
+    reg('ray', Art.rayCanvas());
+    reg('spark', Art.sparkCanvas());
 
     const a = this.anims;
     a.create({ key: 'k_idle', frames: [{ key: 'k_idle' }], frameRate: 1, repeat: -1 });
     a.create({ key: 'k_run', frames: ['k_run1', 'k_run2', 'k_run3', 'k_run2'].map(key => ({ key })), frameRate: 10, repeat: -1 });
     a.create({ key: 'torch', frames: [{ key: 'torch_t0' }, { key: 'torch_t1' }], frameRate: 6, repeat: -1 });
+    a.create({ key: 'fireball', frames: [{ key: 'fireball_f0' }, { key: 'fireball_f1' }], frameRate: 10, repeat: -1 });
+    a.create({ key: 'bat', frames: [{ key: 'bat_b0' }, { key: 'bat_b1' }], frameRate: 8, repeat: -1 });
     a.create({ key: 'flag_wave', frames: [{ key: 'flag_up1' }, { key: 'flag_up2' }], frameRate: 4, repeat: -1 });
     for (const color of [...Object.keys(Art.SLIME_COLORS), 'gold']) {
       a.create({ key: `cr_${color}`, frames: [{ key: `cr_${color}_c0` }, { key: `cr_${color}_c1` }], frameRate: 4, repeat: -1 });

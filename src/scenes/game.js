@@ -1,97 +1,120 @@
-import { ROOMS, TILE, ROWS, bakeRoom, colliders } from '../rooms.js';
+import { LEVELS } from '../levels.js';
+import { TILE, PARALLAX, PILLAR, colliders, getBaked, getRoom } from '../world.js';
 import { State } from '../state.js';
 import { Audio } from '../audio.js';
 import { YSDK } from '../sdk.js';
+import { chainCanvas } from '../art.js';
 import { Knight } from '../entities/knight.js';
 import { Slime } from '../entities/slimes.js';
 import { KingSlime } from '../entities/king.js';
-
-const baked = new Map();
-export function getBaked(i) {
-  if (!baked.has(i)) baked.set(i, bakeRoom(ROOMS[i], i));
-  return baked.get(i);
-}
+import * as Decor from '../entities/decor.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() { super('Game'); }
 
   create() {
-    const index = State.room;
-    const room = ROOMS[index];
+    const L = State.level, index = State.room;
+    const level = LEVELS[L];
+    const room = getRoom(L, index);
+    this.level = level;
     this.room = room;
     this.roomIndex = index;
-    const bake = getBaked(index);
+    const bake = getBaked(L, index);
     this.bake = bake;
     this.solid = bake.solid;
-    const W = room.w * TILE, H = ROWS * TILE;
-    this.W = W;
+    const { W, H } = bake;
+    this.W = W; this.H = H;
     this.leaving = false;
+    this.chestOpened = false;
+    this.king = null;
+    this.chest = null;
     this.enemies = [];
+    this.tickers = [];
 
-    // background
-    const key = `room_${index}`;
-    if (!this.textures.exists(key)) this.textures.addCanvas(key, bake.canvas);
-    this.add.image(0, 0, key).setOrigin(0, 0).setDepth(0);
+    // layers: far cave (parallax) -> lit room -> props
+    const fk = `far_${L}_${index}`, rk = `room_${L}_${index}`;
+    if (!this.textures.exists(fk)) this.textures.addCanvas(fk, bake.far);
+    if (!this.textures.exists(rk)) this.textures.addCanvas(rk, bake.canvas);
+    this.add.image(0, 0, fk).setOrigin(0, 0).setScrollFactor(PARALLAX).setDepth(-2);
+    this.add.image(0, 0, rk).setOrigin(0, 0).setDepth(0);
+    Decor.addRays(this, bake);
 
-    // torch flames + flicker glow
     for (const [sx, sy] of bake.torches) {
       this.add.sprite(sx - 2, sy - 2, 'torch_t0').setOrigin(0, 0).setDepth(2).play({ key: 'torch', startFrame: Phaser.Math.Between(0, 1) });
       const g = this.add.image(sx, sy, 'glow').setDepth(3).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.22).setScale(1.7);
       this.tweens.add({ targets: g, alpha: { from: 0.16, to: 0.27 }, scale: { from: 1.6, to: 1.8 }, duration: Phaser.Math.Between(180, 320), yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }
+    this.tickers.push(Decor.addFarLife(this, bake));
+    this.tickers.push(Decor.addGarlands(this, bake));
+    this.tickers.push(Decor.addHangers(this, bake));
+    this.tickers.push(Decor.addLanterns(this, bake, chainCanvas));
+    this.tickers.push(Decor.addFireflies(this, bake, Math.round(W * H / (bake.open ? 4000 : 7000))));
+    this.tickers.push(Decor.addDrips(this, bake));
+    this.tickers.push(Decor.addLeaves(this, bake));
+    this.tickers.push(Decor.addBats(this, bake));
+    Decor.addMushroomGlows(this, bake);
+    Decor.addDust(this, bake);
 
-    // physics world
+    // physics
     this.physics.world.setBounds(0, 0, W, H + 200);
     this.solids = this.physics.add.staticGroup();
     for (const r of colliders(this.solid)) {
-      const z = this.add.zone(r.x + r.w / 2, r.y + r.h / 2, r.w, r.h);
+      if (bake.open && r.w === TILE && r.y > 0 && r.y < (bake.rows - 2) * TILE) {
+        if (r.x === 0) { r.x = TILE - PILLAR; r.w = PILLAR; } else if (r.x === W - TILE) { r.w = PILLAR; }
+      }
+      const h = r.oneWay ? 7 : r.h;
+      const z = this.add.zone(r.x + r.w / 2, r.y + h / 2, r.w, h);
       this.physics.add.existing(z, true);
       if (r.oneWay) { z.body.checkCollision.down = false; z.body.checkCollision.left = false; z.body.checkCollision.right = false; }
       this.solids.add(z);
     }
 
-    // doors: decorative entrance on the left, exit on the right (not in boss room)
-    if (index > 0) this.add.image(TILE / 2 + 1, 7 * TILE + 1, 'door_closed').setOrigin(0.5, 1).setDepth(4).setTint(0xb0a090);
-    if (!room.boss) {
-      this.exitDoor = this.add.image((room.w - 1) * TILE + 8, 7 * TILE + 1, 'door_closed').setOrigin(0.5, 1).setDepth(4);
-    }
-
     // player
-    let sx, sy;
-    if (State.spawn) { ({ x: sx, y: sy } = State.spawn); State.spawn = null; } else { sx = room.start[0] * TILE + 8; sy = (room.start[1] + 1) * TILE; }
+    const start = bake.ents.find(([t]) => t === 'P');
+    let sx = start[1] * TILE + 8, sy = (start[2] + 1) * TILE;
+    if (State.spawn) { ({ x: sx, y: sy } = State.spawn); State.spawn = null; }
+    if (index > 0 || L > 0) this.add.image(start[1] * TILE + 8, (start[2] + 1) * TILE + 1, 'door_closed').setOrigin(0.5, 1).setDepth(4).setTint(0xb0a090);
     this.knight = new Knight(this, sx, sy);
     this.physics.add.collider(this.knight, this.solids);
 
     // groups
-    this.enemyGroup = this.physics.add.group({ runChildUpdate: false });
+    this.enemyGroup = this.physics.add.group();
     this.physics.add.collider(this.enemyGroup, this.solids);
     this.loot = this.physics.add.group();
     this.physics.add.collider(this.loot, this.solids);
     this.physics.add.overlap(this.knight, this.loot, (k, item) => this.collect(item));
-    this.physics.add.overlap(this.knight, this.enemyGroup, (k, e) => { if (!e.dead && !(e.state === 'sleep')) k.hurt(e.x); });
+    this.physics.add.overlap(this.knight, this.enemyGroup, (k, e) => {
+      if (e.dead || e.state === 'sleep') return;
+      k.hurt(e.x, 1, e.guard ? { knock: 170, vy: -130, stun: 0.3 } : {});
+    });
     this.waves = this.physics.add.group({ allowGravity: false });
     this.physics.add.overlap(this.knight, this.waves, (k, w) => k.hurt(w.x));
+    this.fireballs = this.physics.add.group({ allowGravity: false });
+    this.physics.add.overlap(this.knight, this.fireballs, (k, f) => {
+      if (!f.active || k.invuln > 0 || k.dead) return;
+      // fireballs knock you clean off the ledge
+      k.hurt(f.x, 1, { dir: Math.sign(f.body.velocity.x) || 1, knock: 190, vy: -110, stun: 0.4 });
+      f.pop(true);
+    });
+    this.movers = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.physics.add.collider(this.knight, this.movers);
+    this.physics.add.collider(this.loot, this.movers);
 
     this.flags = [];
-    for (const [type, tx, ty] of room.ents) this.spawnEntity(type, tx, ty);
+    this.exitDoor = null;
+    for (const [type, tx, ty] of bake.ents) this.spawnEntity(type, tx, ty);
 
     // camera
     const cam = this.cameras.main;
     cam.setBounds(0, 0, W, H);
-    cam.startFollow(this.knight, true, 0.15, 0.15, 0, 8);
-    cam.setDeadzone(24, 40);
+    cam.startFollow(this.knight, true, 0.15, 0.15, 0, 6);
+    cam.setDeadzone(18, 22);
     cam.fadeIn(350, 12, 8, 6);
     cam.setRoundPixels(true);
 
-    // floating dust motes
-    this.add.particles(0, 0, 'px', {
-      x: { min: 0, max: W }, y: { min: 20, max: 110 }, lifespan: 5000, speedY: { min: -4, max: -1 }, speedX: { min: -3, max: 3 },
-      alpha: { start: 0, end: 0, ease: (t) => Math.sin(t * Math.PI) * 0.7 }, tint: 0xffd9a0, frequency: 260, quantity: 1,
-    }).setDepth(5);
-
     Audio.play(room.music);
-    this.registry.set('room', { name: room.name, index });
-    this.game.events.emit('room-enter', room.name, index);
+    this.registry.set('room', { name: room.name, index, level: L });
+    this.game.events.emit('room-enter', room.name, index, L);
     this.events.on('hearts', () => this.game.events.emit('hearts'));
     this.events.on('boss-hp', (hp, max) => this.game.events.emit('boss-hp', hp, max));
     this.events.on('player-acted', () => this.game.events.emit('player-acted'));
@@ -105,31 +128,36 @@ export class GameScene extends Phaser.Scene {
   // ------------------------------------------------------------ helpers
   isSolidAt(px, py) {
     const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
-    if (ty < 0 || ty >= ROWS || tx < 0 || tx >= this.room.w) return false;
+    if (ty < 0 || ty >= this.bake.rows || tx < 0 || tx >= this.bake.cols) return false;
     return this.solid[ty][tx] > 0;
   }
 
-  entId(type, tx, ty) { return `${this.roomIndex}:${type}:${tx}:${ty}`; }
+  entId(type, tx, ty) { return `${State.level}:${this.roomIndex}:${type}:${tx}:${ty}`; }
 
   spawnEntity(type, tx, ty) {
     const px = tx * TILE + 8, py = (ty + 1) * TILE;
     const id = this.entId(type, tx, ty);
-    const colors = { g: 'green', p: 'pink', v: 'purple' };
+    const colors = { g: 'green', p: 'pink', v: 'purple', f: 'fire' };
     if (colors[type]) {
       if (State.defeated.has(id)) return;
-      this.spawnSlime(px, py, colors[type], { id });
-    } else if (type === 'c') {
+      const face = type === 'f' ? (this.isSolidAt(px - TILE, py - 8) ? 1 : -1) : 1;
+      this.spawnSlime(px, py, colors[type], { id, guard: !!this.level.guardSlimes, face });
+    } else if (type === 'c' || type === 'h') {
       if (State.collected.has(id)) return;
       const colorList = ['green', 'pink', 'purple'];
       const color = colorList[(tx + ty) % 3];
-      const c = this.loot.create(px, py - 8, `cr_${color}_c0`);
+      const c = this.loot.create(px, py - 8, type === 'c' ? `cr_${color}_c0` : 'heart_full');
       c.body.setAllowGravity(false);
       c.body.setSize(5, 5);
-      c.play(`cr_${color}`);
-      c.lootType = 'crystal';
+      if (type === 'c') c.play(`cr_${color}`);
+      c.lootType = type === 'c' ? 'crystal' : 'heart';
       c.lootId = id;
       c.setDepth(7);
       this.tweens.add({ targets: c, y: c.y - 2, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: (tx * 97) % 700 });
+      if (type === 'c') {
+        const g = this.add.image(px, py - 8, 'glow').setBlendMode(Phaser.BlendModes.ADD).setScale(0.22).setAlpha(0.35).setDepth(6);
+        c.once('destroy', () => g.destroy());
+      }
     } else if (type === 'F') {
       const active = State.flags.has(id);
       const f = this.add.sprite(px - 2, py + 1, active ? 'flag_up1' : 'flag_down').setOrigin(0.5, 1).setDepth(6);
@@ -137,6 +165,10 @@ export class GameScene extends Phaser.Scene {
       f.flagId = id;
       f.active_ = active;
       this.flags.push(f);
+    } else if (type === 'D') {
+      this.exitDoor = this.add.image(px, py + 1, 'door_closed').setOrigin(0.5, 1).setDepth(4);
+      const g = this.add.image(px, py - 12, 'glow').setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.18).setScale(0.9).setDepth(3);
+      this.tweens.add({ targets: g, alpha: 0.32, duration: 900, yoyo: true, repeat: -1 });
     } else if (type === 'K') {
       if (State.bossDefeated) { this.spawnChest(px, py); return; }
       const king = new KingSlime(this, px, py);
@@ -144,6 +176,18 @@ export class GameScene extends Phaser.Scene {
       this.enemies.push(king);
       this.enemyGroup.add(king);
       king.body.setMaxVelocityY(400);
+    } else if (type === 'M' || type === 'E') {
+      const cfg = this.room.movers?.[type] ?? { range: 64, speed: 26 };
+      const m = this.movers.create(tx * TILE + 16, ty * TILE + 4, 'mover');
+      m.body.setAllowGravity(false).setImmovable(true);
+      m.body.checkCollision.down = false; m.body.checkCollision.left = false; m.body.checkCollision.right = false;
+      m.body.setFriction(1, 1);
+      m.axis = type === 'M' ? 'x' : 'y';
+      m.home = { x: m.x, y: m.y };
+      m.range = cfg.range;
+      m.speed = cfg.speed;
+      m.dir = 1;
+      m.setDepth(6);
     }
   }
 
@@ -153,6 +197,24 @@ export class GameScene extends Phaser.Scene {
     this.enemyGroup.add(s);
     s.body.setMaxVelocityY(300);
     return s;
+  }
+
+  spawnFireball(x, y, dir) {
+    this.fireballCount = (this.fireballCount || 0) + 1;
+    const f = this.fireballs.create(x, y, 'fireball_f0').play('fireball').setDepth(11);
+    f.body.setSize(5, 5).setOffset(2, 2);
+    f.setVelocityX(dir * 58);
+    f.setFlipX(dir < 0);
+    const g = this.add.image(x, y, 'glow').setBlendMode(Phaser.BlendModes.ADD).setTint(0xff7a1a).setScale(0.45).setAlpha(0.6).setDepth(10);
+    f.glow = g;
+    f.pop = (hitKnight) => {
+      if (!f.active) return;
+      Audio.sfx('fizz');
+      this.burst(f.x, f.y, 0xff8a1e, hitKnight ? 10 : 6);
+      g.destroy();
+      f.destroy();
+    };
+    Audio.sfx('fireball');
   }
 
   markDefeated(e) {
@@ -167,6 +229,12 @@ export class GameScene extends Phaser.Scene {
     }).setDepth(12);
     em.explode(n);
     this.time.delayedCall(800, () => em.destroy());
+  }
+
+  spark(x, y) {
+    const s = this.add.image(x, y, 'spark').setDepth(14).setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({ targets: s, scale: { from: 2, to: 0.5 }, alpha: 0, angle: 45, duration: 220, onComplete: () => s.destroy() });
+    this.burst(x, y, 0xffffff, 5);
   }
 
   dust(x, y, n = 8) {
@@ -210,6 +278,7 @@ export class GameScene extends Phaser.Scene {
     } else if (item.lootType === 'heart') {
       if (State.hearts >= State.maxHearts) return;
       State.hearts++;
+      if (item.lootId) State.collected.add(item.lootId);
       Audio.sfx('heart');
       this.game.events.emit('hearts');
       this.sparkle(item.x, item.y);
@@ -225,8 +294,8 @@ export class GameScene extends Phaser.Scene {
     this.time.delayedCall(400, () => em.destroy());
   }
 
-  spawnWave(x, dir) {
-    const w = this.waves.create(x, 7 * TILE, 'wave').setOrigin(0.5, 1).setDepth(9);
+  spawnWave(x, dir, y) {
+    const w = this.waves.create(x, y, 'wave').setOrigin(0.5, 1).setDepth(9);
     w.body.setSize(6, 5).setOffset(1, 1);
     w.setVelocityX(dir * 95);
     w.setFlipX(dir < 0);
@@ -241,7 +310,6 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.knight, this.chest, () => this.openChest());
     const g = this.add.image(x, y - 6, 'glow').setBlendMode(Phaser.BlendModes.ADD).setDepth(6).setAlpha(0.35);
     this.tweens.add({ targets: g, alpha: 0.15, duration: 600, yoyo: true, repeat: -1 });
-    this.chestGlow = g;
   }
 
   openChest() {
@@ -249,10 +317,16 @@ export class GameScene extends Phaser.Scene {
     this.chestOpened = true;
     this.chest.setTexture('chest_open');
     this.burst(this.chest.x, this.chest.y - 8, 0xffd84a, 16);
+    this.finishLevel(1100);
+  }
+
+  finishLevel(delay = 600) {
     Audio.stop();
     Audio.sfx('victory');
     YSDK.gameplayStop();
-    this.time.delayedCall(1100, () => {
+    this.knight.dead = true;
+    this.knight.body.setVelocity(0, 0);
+    this.time.delayedCall(delay, () => {
       this.scene.pause();
       this.scene.launch('Victory');
     });
@@ -269,9 +343,8 @@ export class GameScene extends Phaser.Scene {
       c.body.setSize(5, 5).setBounce(0.5).setDrag(30, 0).setVelocity(Phaser.Math.Between(-90, 90), Phaser.Math.Between(-220, -150));
       c.pickDelay = 0.4;
     }
-    // remaining minis pop
     this.enemies.filter(e => e.active && e.kind === 'mini').forEach(e => e.pop(false));
-    this.time.delayedCall(700, () => this.spawnChest(this.W / 2, 7 * TILE));
+    this.time.delayedCall(700, () => this.spawnChest(this.W / 2, y));
   }
 
   onDeath() {
@@ -296,11 +369,13 @@ export class GameScene extends Phaser.Scene {
     if (this.leaving) return;
     this.leaving = true;
     Audio.sfx('door');
+    const last = this.roomIndex >= this.level.rooms.length - 1;
+    if (last) { this.finishLevel(500); return; }
     this.knight.body.setVelocity(0, 0);
     this.knight.dead = true;
     this.cameras.main.fadeOut(350, 12, 8, 6);
     this.cameras.main.once('camerafadeoutcomplete', () => {
-      State.room = Math.min(ROOMS.length - 1, this.roomIndex + 1);
+      State.room = this.roomIndex + 1;
       State.spawn = null;
       this.scene.restart();
     });
@@ -309,32 +384,44 @@ export class GameScene extends Phaser.Scene {
   // ------------------------------------------------------------ loop
   applyLight(obj) {
     if (!obj.active || obj.flashing) return;
-    const [r, g, b] = this.bake.light(obj.x, obj.y - 6);
-    const fl = obj.lightFloor ?? 0.62; // acid slimes glow, so they darken less
+    const [r, g, b] = this.bake.light(obj.x, obj.y - 5);
+    const fl = obj.lightFloor ?? 0.66;
     const ch = (v) => Math.round(Phaser.Math.Clamp(fl + (v - 0.5) * 0.55, fl, 1) * 255);
     obj.setTint(Phaser.Display.Color.GetColor(ch(r), ch(g), ch(b)));
   }
 
   update(time, delta) {
-    const dt = delta / 1000;
+    const dt = Math.min(delta, 50) / 1000;
     const k = this.knight;
+
+    for (const m of this.movers.getChildren()) {
+      const off = m.axis === 'x' ? m.x - m.home.x : m.home.y - m.y;
+      if (off >= m.range) m.dir = -1; else if (off <= 0) m.dir = 1;
+      if (m.axis === 'x') m.body.setVelocity(m.dir * m.speed, 0);
+      else m.body.setVelocity(0, -m.dir * m.speed);
+    }
+
     k.update(time, delta);
     this.applyLight(k);
     for (const e of this.enemies) {
       if (!e.active) continue;
       e.update(time, delta);
       this.applyLight(e);
-      if (e.y > ROWS * TILE + 40) { e.dead = true; this.markDefeated(e); e.destroy(); }
+      if (e.y > this.H + 40) { e.dead = true; this.markDefeated(e); e.destroy(); }
     }
     this.enemies = this.enemies.filter(e => e.active);
-    this.loot.getChildren().forEach(i => { if (i.pickDelay > 0) i.pickDelay -= dt; if (i.y > ROWS * TILE + 40) i.destroy(); });
+    this.loot.getChildren().forEach(i => { if (i.pickDelay > 0) i.pickDelay -= dt; if (i.y > this.H + 40) i.destroy(); });
+    for (const f of this.fireballs.getChildren()) {
+      if (!f.active) continue;
+      f.glow.setPosition(f.x, f.y);
+      if (this.isSolidAt(f.x + Math.sign(f.body.velocity.x) * 3, f.y)) f.pop(false);
+    }
+    for (const t of this.tickers) t(time, dt);
 
-    // pits
-    if (!k.dead && k.y > ROWS * TILE + 24) k.fellInPit();
+    if (!k.dead && k.y > this.H + 24) k.fellInPit();
 
-    // checkpoints
     for (const f of this.flags) {
-      if (f.active_ || Math.abs(k.x - f.x) > 14 || Math.abs(k.y - f.y) > 20) continue;
+      if (f.active_ || Math.abs(k.x - f.x) > 20 || Math.abs(k.y - f.y) > 18) continue;
       f.active_ = true;
       f.play('flag_wave');
       State.flags.add(f.flagId);
@@ -346,18 +433,16 @@ export class GameScene extends Phaser.Scene {
       this.game.events.emit('checkpoint');
     }
 
-    // exit door
-    if (this.exitDoor && !k.dead) {
-      const near = k.x > this.exitDoor.x - 40;
-      if (near && this.exitDoor.texture.key !== 'door_open') { this.exitDoor.setTexture('door_open'); Audio.sfx('door'); }
-      if (k.x > this.exitDoor.x - 6) this.exitRoom();
+    if (this.exitDoor && !k.dead && !this.leaving) {
+      const d = this.exitDoor;
+      const near = Math.abs(k.x - d.x) < 40 && Math.abs(k.y - d.y) < 24;
+      if (near && d.texture.key !== 'door_open') { d.setTexture('door_open'); Audio.sfx('door'); }
+      if (Math.abs(k.x - d.x) < 5 && Math.abs(k.y - d.y) < 10) this.exitRoom();
     }
 
-    // boss wake-up
-    if (this.king && this.king.state === 'sleep' && k.x > 7 * TILE) {
+    if (this.king && this.king.state === 'sleep' && Math.abs(k.x - this.king.x) < 6 * TILE) {
       this.king.wake();
       this.game.events.emit('boss-start', this.king.hp, this.king.maxHp);
     }
   }
 }
-
