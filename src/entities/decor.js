@@ -171,7 +171,7 @@ export function addGarlands(scene, bake) {
     for (let i = 1; i < n; i++) flags.push(scene.add.image(0, 0, `pennant_${(i + gi) % GEMS.length}`).setOrigin(0.5, 0).setDepth(3));
     return { x1, y1, x2, y2, n, flags, sag: 8 + (x2 - x1) * 0.06, p: Math.random() * 6 };
   });
-  const still = bake.open; // tower garlands hang still
+  const still = true; // garlands hang still on every level
   const draw = (t) => {
     rope.clear();
     rope.lineStyle(1, 0x2a1d17, 1);
@@ -203,7 +203,7 @@ export function addHangers(scene, bake) {
   }
   for (const [x, y] of bake.wallSpots) {
     const k = Math.floor(x / 16 + y / 16) % GEMS.length;
-    items.push({ img: scene.add.image(x, y, `banner_${k}`).setOrigin(0.5, 0).setDepth(3), glow: null, x, y, p: Math.random() * 6, a: 0.07 });
+    scene.add.image(x, y, `banner_${k}`).setOrigin(0.5, 0).setDepth(3); // wall banners hang still
   }
   const spots = bake.undersides.filter((_, i) => (i * 7) % (bake.open ? 3 : 4) === 0);
   for (const [x, y] of spots) {
@@ -214,7 +214,7 @@ export function addHangers(scene, bake) {
     if (!isBanner) {
       glow = scene.add.image(x, y + 6, 'glow').setBlendMode(Phaser.BlendModes.ADD).setTint(GEM_INT[k]).setScale(0.4).setAlpha(0.35).setDepth(3);
     }
-    items.push({ img, glow, x, y, p: Math.random() * 6, a: isBanner ? 0.12 : 0.22 });
+    items.push({ img, glow, x, y, p: Math.random() * 6, a: isBanner ? 0 : 0.22 }); // banners hang still
   }
   return (t) => {
     const s = t / 1000;

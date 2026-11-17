@@ -29,6 +29,10 @@ jobs:
         run: |
           mkdir -p _site
           cp -r index.html lib src _site/
+          # cache-bust every module import so players always get the fresh build
+          V=${GITHUB_SHA::8}
+          sed -i "s/__BUILD__/$V/" _site/index.html
+          find _site/src -name '*.js' -exec sed -i -E "s#(from '[^']+\.js)'#\1?v=$V'#g" {} +
 
       - name: Zip for Yandex Games
         run: cd _site && zip -r ../slime-game-yandex.zip .
