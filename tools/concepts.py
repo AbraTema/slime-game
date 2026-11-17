@@ -47,50 +47,50 @@ def up(img, s):
 
 # ---------------------------------------------------------------- knight (13 px tall)
 KNIGHT_IDLE = [
-    "..pp...........",
-    ".ppp...........",
-    "..Lsss.........",
-    ".Lsssss........",
-    ".Lssvvv........",
-    ".Lssvwv........",
-    ".Lsssss........",
-    "..dssd.........",
-    ".cLsssd........",
-    ".cLsssdhbbbbbb.",
-    "ccLsssd........",
-    "ccBBBBB........",
-    "..Lssdd........",
-    "..Ls.sd........",
-    "..Ls.sd........",
-    "..Ls.sd........",
-    "..gg.gg........",
+    "..pp.............",
+    ".ppp.............",
+    "..Lsss...........",
+    ".Lsssss..........",
+    ".Lssvvv..........",
+    ".Lssvwv..........",
+    ".Lsssss..........",
+    "..dssd...........",
+    ".dLsssaa.........",
+    "cdLsssoa.........",
+    "cdLsssoah........",
+    "cgBBBBoghbbbbbb..",
+    "c.Lssd..h........",
+    "..Ls.sd..........",
+    "..Ls.sd..........",
+    "..Ls.sd..........",
+    "..gg.gg..........",
 ]
 KNIGHT_SWING = [
-    "..pp...........",
-    ".ppp.........b.",
-    "..Lsss......b..",
-    ".Lsssss....b...",
-    ".Lssvvv...b....",
-    ".Lssvwv..b.....",
-    ".Lsssss.b......",
-    "..dssd.h.......",
-    ".cLsssdh.......",
-    ".cLsssd........",
-    "ccLsssd........",
-    "ccBBBBB........",
-    "..Lssdd........",
-    "..Ls.sd........",
-    "..Ls.sd........",
-    "..Ls.sd........",
-    "..gg.gg........",
+    "..pp..........b..",
+    ".ppp.........b...",
+    "..Lsss......b....",
+    ".Lsssss....b.....",
+    ".Lssvvv...b......",
+    ".Lssvwv..h.......",
+    ".Lsssss.g........",
+    "..dssd.a.........",
+    ".dLsssaa.........",
+    "cdLsss...........",
+    "cdLsss...........",
+    "cgBBBB...........",
+    "c.Lssd...........",
+    "..Ls.sd..........",
+    "..Ls.sd..........",
+    "..Ls.sd..........",
+    "..gg.gg..........",
 ]
 KNIGHTS = {
     "A": ("A — Классический", dict(p="#e2463f", L="#f2f5f8", s="#c3ccd8", d="#7d8899", v="#232032", w="#ffffff",
-                                   c="#3d6fd6", h="#f2c14e", b="#eef3f8", B="#7a4a2a", g="#55607a")),
+                                   c="#3d6fd6", h="#f2c14e", b="#eef3f8", B="#7a4a2a", g="#55607a", a="#aab4c4", o="#3a3446")),
     "B": ("B — Золотой", dict(p="#f4f1ea", L="#ffe49a", s="#e8b64c", d="#a8702a", v="#2a1c1c", w="#ffffff",
-                              c="#3f9e5a", h="#c94f3a", b="#eef3f8", B="#6b3a22", g="#7a4e22")),
+                              c="#3f9e5a", h="#c94f3a", b="#eef3f8", B="#6b3a22", g="#7a4e22", a="#d9a548", o="#4a2e18")),
     "C": ("C — Юный с гребнем", dict(p="#ffcc33", L="#e9f1fa", s="#b8c7d9", d="#6f7f96", v="#1f2433", w="#ffffff",
-                                     c="#f07b2e", h="#ffcc33", b="#eef3f8", B="#5a3a2a", g="#4e5a70")),
+                                     c="#f07b2e", h="#ffcc33", b="#eef3f8", B="#5a3a2a", g="#4e5a70", a="#a3b2c6", o="#343a4a")),
 }
 
 
@@ -360,17 +360,14 @@ def label(d, xy, text, size=26, fill="#fff3d6"):
 
 
 def sheet_knights():
-    S = 12
-    sh = Image.new("RGBA", (1680, 440), C("#241a17"))
+    S = 16
+    sh = Image.new("RGBA", (900, 420), C("#241a17"))
     d = ImageDraw.Draw(sh)
-    label(d, (30, 20), "Рыцарь v3 — стройный, пропорции человека (покой / удар)", 32)
-    for i, k in enumerate(KNIGHTS):
-        x0 = 30 + i * 560
-        d.rounded_rectangle([x0 - 10, 80, x0 + 520, 420], 18, fill=C("#33261f"))
-        label(d, (x0 + 10, 95), KNIGHTS[k][0], 26)
-        sh.alpha_composite(up(knight(k, "idle"), S), (x0 + 20, 150))
-        sh.alpha_composite(up(knight(k, "swing"), S), (x0 + 280, 150))
-    sh.save(os.path.join(OUT, "01_knight_variants.png"))
+    label(d, (30, 20), "Рыцарь A — с руками (покой / удар)", 30)
+    sh.alpha_composite(up(knight("A", "idle"), S), (60, 90))
+    sh.alpha_composite(up(knight("A", "swing"), S), (420, 90))
+    sh.alpha_composite(up(knight("A"), 3), (800, 350))
+    sh.save(os.path.join(OUT, "01_knight.png"))
 
 
 def sheet_slimes():
@@ -397,12 +394,12 @@ def sheet_slimes():
 
 
 def sheet_scenes():
-    for k, cfg in SCENES.items():
+    for k, cfg in [("1", SCENES["1"])]:
         img = up(scene(cfg), 5)
         canvas = Image.new("RGBA", (img.width, img.height + 64), C("#241a17"))
         canvas.alpha_composite(img, (0, 64))
         label(ImageDraw.Draw(canvas), (20, 16), cfg["name"], 28)
-        canvas.save(os.path.join(OUT, f"0{2 + int(k)}_level_variant_{k}.png"))
+        canvas.save(os.path.join(OUT, "03_level_amber.png"))
 
 
 if __name__ == "__main__":
