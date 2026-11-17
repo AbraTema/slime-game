@@ -1,0 +1,29 @@
+# Рыцарь и слаймы
+
+Детский пиксельный платформер для Яндекс Игр (Phaser 3, без сборщика). Дизайн: [`docs/DESIGN.md`](docs/DESIGN.md).
+
+## Запуск локально
+```bash
+python3 -m http.server 8000   # затем открыть http://localhost:8000
+```
+
+## Управление
+←/→ или A/D — ходить · Пробел / W / ↑ — прыжок · X / J — меч · Esc — пауза · M — звук
+
+## Структура
+- `src/art.js` — вся графика рисуется кодом из пиксельных сеток
+- `src/rooms.js` — 3 комнаты (Коридор → Мшистые уступы → Тронный зал), запекание света
+- `src/entities/` — рыцарь (расширяемые атаки), слаймы, Король-слайм
+- `src/audio.js` — музыка и звуки на Web Audio
+- `src/sdk.js` — SDK Яндекс Игр: `LoadingAPI.ready`, `i18n.lang`, пауза звука
+
+## Публикация
+- **GitHub Pages:** каждый пуш в `main` публикует игру (`.github/workflows/deploy.yml`).
+- **Яндекс Игры:** архив `slime-game-yandex.zip` прикладывается к каждому запуску workflow
+  (вкладка Actions → запуск → Artifacts), или локально: `python3 tools/build_zip.py`.
+
+## Проверки
+```bash
+python3 tools/playtest.py   # сценарные проверки в headless Chrome
+python3 tools/smoke.py      # скриншоты всех комнат
+```
