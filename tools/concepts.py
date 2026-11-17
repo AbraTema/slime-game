@@ -47,34 +47,42 @@ def up(img, s):
 
 # ---------------------------------------------------------------- knight (13 px tall)
 KNIGHT_IDLE = [
-    "....pp..........",
-    "...pppp.........",
-    "...Lssssss......",
-    "..Lsssssssd.....",
-    "..Lsvvvvvvv.....",
-    "..Lsvvwvvwv.....",
-    "..Lsssssssd.....",
-    "...ddddddd......",
-    "..cLssssd.......",
-    ".ccLssssdhbbbbb.",
-    ".ccsBBBBd.......",
-    "..c.ss.ss.......",
-    "....gg.gg.......",
+    "..pp...........",
+    ".ppp...........",
+    "..Lsss.........",
+    ".Lsssss........",
+    ".Lssvvv........",
+    ".Lssvwv........",
+    ".Lsssss........",
+    "..dssd.........",
+    ".cLsssd........",
+    ".cLsssdhbbbbbb.",
+    "ccLsssd........",
+    "ccBBBBB........",
+    "..Lssdd........",
+    "..Ls.sd........",
+    "..Ls.sd........",
+    "..Ls.sd........",
+    "..gg.gg........",
 ]
 KNIGHT_SWING = [
-    "....pp..........",
-    "...pppp.......b.",
-    "...Lssssss...b..",
-    "..Lsssssssd.b...",
-    "..Lsvvvvvvvb....",
-    "..Lsvvwvvwb.....",
-    "..Lsssssssd.....",
-    "...ddddddd......",
-    "..cLssssdh......",
-    ".ccLssssh.......",
-    ".ccsBBBBd.......",
-    "..c.ss.ss.......",
-    "....gg.gg.......",
+    "..pp...........",
+    ".ppp.........b.",
+    "..Lsss......b..",
+    ".Lsssss....b...",
+    ".Lssvvv...b....",
+    ".Lssvwv..b.....",
+    ".Lsssss.b......",
+    "..dssd.h.......",
+    ".cLsssdh.......",
+    ".cLsssd........",
+    "ccLsssd........",
+    "ccBBBBB........",
+    "..Lssdd........",
+    "..Ls.sd........",
+    "..Ls.sd........",
+    "..Ls.sd........",
+    "..gg.gg........",
 ]
 KNIGHTS = {
     "A": ("A — Классический", dict(p="#e2463f", L="#f2f5f8", s="#c3ccd8", d="#7d8899", v="#232032", w="#ffffff",
@@ -106,7 +114,7 @@ SLIME_B = [
     "..xLxxxx..",
     ".xLxxxxxx.",
     ".xxexxexx.",
-    "xrxexxexrx",
+    "xxxexxexxx",
     "xxxxmmxxxx",
     "DDDDDDDDDD",
 ]
@@ -322,12 +330,12 @@ def scene(cfg, kn="A", seed=11):
 
     # ---- actors
     actors = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    actors.alpha_composite(knight(kn, "swing"), (44, 97))
-    actors.alpha_composite(slime("green"), (70, 103))
-    actors.alpha_composite(slime("pink"), (110, 71))
-    actors.alpha_composite(slime("purple"), (150, 103))
+    actors.alpha_composite(knight(kn, "swing"), (44, 93))
+    actors.alpha_composite(slime("green", "B"), (70, 102))
+    actors.alpha_composite(slime("pink", "B"), (110, 70))
+    actors.alpha_composite(slime("purple", "B"), (150, 102))
     actors.alpha_composite(slime("purple", "mini"), (164, 106))
-    actors.alpha_composite(slime("green"), (196, 47))
+    actors.alpha_composite(slime("green", "B"), (196, 46))
     actors.alpha_composite(flag(KNIGHTS[kn][1]["c"]), (228, 99))
     for cx, cy, col in [(128, 68, "pink"), (136, 98, "green"), (186, 42, "purple"), (96, 66, "green")]:
         actors.alpha_composite(crystal(col), (cx, cy))
@@ -352,44 +360,39 @@ def label(d, xy, text, size=26, fill="#fff3d6"):
 
 
 def sheet_knights():
-    S = 14
+    S = 12
     sh = Image.new("RGBA", (1680, 440), C("#241a17"))
     d = ImageDraw.Draw(sh)
-    label(d, (30, 20), "Рыцарь v2 — крупный пиксель (слева покой, справа удар)", 32)
+    label(d, (30, 20), "Рыцарь v3 — стройный, пропорции человека (покой / удар)", 32)
     for i, k in enumerate(KNIGHTS):
         x0 = 30 + i * 560
         d.rounded_rectangle([x0 - 10, 80, x0 + 520, 420], 18, fill=C("#33261f"))
         label(d, (x0 + 10, 95), KNIGHTS[k][0], 26)
-        sh.alpha_composite(up(knight(k, "idle"), S), (x0 + 5, 160))
-        sh.alpha_composite(up(knight(k, "swing"), S), (x0 + 260, 160))
+        sh.alpha_composite(up(knight(k, "idle"), S), (x0 + 20, 150))
+        sh.alpha_composite(up(knight(k, "swing"), S), (x0 + 280, 150))
     sh.save(os.path.join(OUT, "01_knight_variants.png"))
 
 
 def sheet_slimes():
-    sh = Image.new("RGBA", (1680, 760), C("#241a17"))
+    sh = Image.new("RGBA", (1680, 640), C("#241a17"))
     d = ImageDraw.Draw(sh)
-    label(d, (30, 20), "Слаймы v2 — меньше и пиксельнее  ·  Король-слайм", 32)
+    label(d, (30, 20), "Слаймы v3 — с хохолком, без румянца  ·  Король золотой", 32)
     S = 16
-    for r, style in enumerate("AB"):
-        y0 = 90 + r * 210
-        label(d, (30, y0), "Стиль A — круглая капля" if style == "A" else "Стиль B — с хохолком и румянцем", 24)
-        for i, c in enumerate(SLIMES):
-            sh.alpha_composite(up(slime(c, style), S), (40 + i * 220, y0 + 45))
-    label(d, (30, 520), "Мини-слайм (фиолетовый делится на двух таких)", 24)
-    sh.alpha_composite(up(slime("purple", "mini"), S), (40, 570))
-    sh.alpha_composite(up(slime("purple", "mini"), S), (190, 570))
-    for i, kind in enumerate(("gold", "rainbow")):
-        x0 = 760 + i * 460
-        label(d, (x0, 90), "Король: золотой" if kind == "gold" else "Король: радужный", 24)
-        sh.alpha_composite(up(king(kind), 17), (x0, 150))
-    label(d, (760, 500), "Масштаб в игре", 24)
-    row = Image.new("RGBA", (80, 20), (0, 0, 0, 0))
-    row.alpha_composite(knight("A"), (0, 5))
-    row.alpha_composite(slime("green"), (18, 11))
-    row.alpha_composite(slime("pink"), (30, 11))
-    row.alpha_composite(slime("purple"), (42, 11))
-    row.alpha_composite(king("gold"), (56, 4))
-    sh.alpha_composite(up(row, 10), (760, 540))
+    for i, c in enumerate(SLIMES):
+        sh.alpha_composite(up(slime(c, "B"), S), (40 + i * 220, 110))
+    label(d, (30, 330), "Мини-слайм (фиолетовый делится на двух)", 24)
+    sh.alpha_composite(up(slime("purple", "mini"), S), (40, 380))
+    sh.alpha_composite(up(slime("purple", "mini"), S), (190, 380))
+    label(d, (760, 90), "Король-слайм: золотой", 24)
+    sh.alpha_composite(up(king("gold"), 17), (760, 140))
+    label(d, (760, 450), "Масштаб в игре", 24)
+    row = Image.new("RGBA", (84, 22), (0, 0, 0, 0))
+    row.alpha_composite(knight("A"), (0, 3))
+    row.alpha_composite(slime("green", "B"), (18, 12))
+    row.alpha_composite(slime("pink", "B"), (31, 12))
+    row.alpha_composite(slime("purple", "B"), (44, 12))
+    row.alpha_composite(king("gold"), (58, 6))
+    sh.alpha_composite(up(row, 7), (760, 480))
     sh.save(os.path.join(OUT, "02_slimes_and_king.png"))
 
 
