@@ -3,8 +3,8 @@ import { hexToRgb, torchFrames, mushCanvas } from './art.js';
 import { LEVELS } from './levels.js';
 
 export const TILE = 16;
-export const VIEW_W = 192;
-export const VIEW_H = 108;
+export const VIEW_W = 256;
+export const VIEW_H = 144;
 export const PARALLAX = 0.5;
 export const PILLAR = 6; // visible width of the side walls in open rooms
 

@@ -1,5 +1,5 @@
 import { LEVELS } from '../levels.js';
-import { TILE, PARALLAX, PILLAR, colliders, getBaked, getRoom } from '../world.js';
+import { TILE, PARALLAX, PILLAR, VIEW_W, colliders, getBaked, getRoom } from '../world.js';
 import { State } from '../state.js';
 import { Audio } from '../audio.js';
 import { YSDK } from '../sdk.js';
@@ -107,8 +107,8 @@ export class GameScene extends Phaser.Scene {
     // camera
     const cam = this.cameras.main;
     cam.setBounds(0, 0, W, H);
-    cam.startFollow(this.knight, true, 0.15, 0.15, 0, 6);
-    cam.setDeadzone(18, 22);
+    cam.startFollow(this.knight, true, 0.08, 0.08, 0, 4);
+    cam.setDeadzone(Math.min(96, W - VIEW_W + 1), 56);
     cam.fadeIn(350, 12, 8, 6);
     cam.setRoundPixels(true);
 

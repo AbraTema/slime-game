@@ -10,8 +10,8 @@ import { LevelSelectScene } from './scenes/levelselect.js';
 const config = {
   type: Phaser.AUTO,
   parent: 'game',
-  width: 192,
-  height: 108,
+  width: 256,
+  height: 144,
   backgroundColor: '#0c0806',
   pixelArt: true,
   roundPixels: true,

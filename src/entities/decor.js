@@ -171,12 +171,13 @@ export function addGarlands(scene, bake) {
     for (let i = 1; i < n; i++) flags.push(scene.add.image(0, 0, `pennant_${(i + gi) % GEMS.length}`).setOrigin(0.5, 0).setDepth(3));
     return { x1, y1, x2, y2, n, flags, sag: 8 + (x2 - x1) * 0.06, p: Math.random() * 6 };
   });
-  return (t) => {
+  const still = bake.open; // tower garlands hang still
+  const draw = (t) => {
     rope.clear();
     rope.lineStyle(1, 0x2a1d17, 1);
     const s = t / 1000;
     for (const g of garlands) {
-      const sag = g.sag + Math.sin(s * 1.3 + g.p) * 2;
+      const sag = g.sag + (still ? 0 : Math.sin(s * 1.3 + g.p) * 2);
       const pt = (u) => [g.x1 + (g.x2 - g.x1) * u, g.y1 + (g.y2 - g.y1) * u + Math.sin(Math.PI * u) * sag];
       rope.beginPath();
       for (let i = 0; i <= 16; i++) { const [px, py] = pt(i / 16); if (i === 0) rope.moveTo(px, py); else rope.lineTo(px, py); }
@@ -185,10 +186,12 @@ export function addGarlands(scene, bake) {
         const u = (i + 1) / g.n;
         const [px, py] = pt(u);
         f.setPosition(Math.round(px), Math.round(py));
-        f.rotation = Math.sin(s * 2.2 + i * 0.7 + g.p) * 0.25;
+        f.rotation = still ? 0 : Math.sin(s * 2.2 + i * 0.7 + g.p) * 0.25;
       });
     }
   };
+  if (still) { draw(0); return () => {}; }
+  return draw;
 }
 
 /** Things hanging from ceilings and ledges: glowing crystals and banners that swing. */
